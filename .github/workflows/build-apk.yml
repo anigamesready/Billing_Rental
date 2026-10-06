@@ -24,17 +24,36 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Prepare Android SDK
+      - name: Prepare preinstalled Android SDK
+        shell: bash
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-          which sdkmanager
-          sdkmanager --version
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          set -e
+
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+
+          echo "Using Android SDK: $SDK_ROOT"
+
+          test -d "$SDK_ROOT"
+
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -print -quit)"
+
+          if [ -z "$SDKMANAGER" ]; then
+            echo "sdkmanager not found"
+            exit 1
+          fi
+
+          echo "sdkmanager: $SDKMANAGER"
+
+          export PATH="$(dirname "$SDKMANAGER"):$SDK_ROOT/platform-tools:$PATH"
+
+          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+
+          "$SDKMANAGER" \
+            "platform-tools" \
+            "platforms;android-34" \
+            "platforms;android-35" \
+            "build-tools;34.0.0" \
+            "build-tools;35.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
